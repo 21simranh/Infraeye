@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INFRAEYE 3D HUD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0d0e0f;
+            color: #ffffff;
+            font-family: 'Space Grotesk', 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .hud-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            background: #0d0e0f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hud-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hud-corner {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border: 2px solid #06B6D4;
+            pointer-events: none;
+        }
+
+        .hud-corner.top-left {
+            top: 40px;
+            left: 40px;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        .hud-corner.top-right {
+            top: 40px;
+            right: 40px;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        .hud-corner.bottom-left {
+            bottom: 40px;
+            left: 40px;
+            border-right: none;
+            border-top: none;
+        }
+
+        .hud-corner.bottom-right {
+            bottom: 40px;
+            right: 40px;
+            border-left: none;
+            border-top: none;
+        }
+
+        .hud-text {
+            text-align: center;
+            z-index: 10;
+        }
+
+        .hud-title {
+            font-size: 3rem;
+            font-weight: 700;
+            color: #8ff5ff;
+            letter-spacing: 0.3em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px #8ff5ff, 0 0 40px rgba(143, 245, 255, 0.5);
+        }
+
+        .hud-subtitle {
+            font-size: 1rem;
+            color: #757576;
+            letter-spacing: 0.2em;
+            margin-bottom: 40px;
+        }
+
+        .hud-stats {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            margin-top: 60px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #757576;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            color: #8ff5ff;
+            font-weight: 700;
+        }
+
+        .grid-line {
+            position: absolute;
+            background: linear-gradient(90deg, transparent, #06B6D4, transparent);
+        }
+
+        @keyframes scan {
+            0% {
+                top: 0;
+            }
+            100% {
+                top: 100%;
+            }
+        }
+
+        .scan-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #8ff5ff, transparent);
+            box-shadow: 0 0 20px #8ff5ff;
+            animation: scan 3s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="hud-container">
+        <canvas id="canvas"></canvas>
+        
+        <div class="hud-corner top-left"></div>
+        <div class="hud-corner top-right"></div>
+        <div class="hud-corner bottom-left"></div>
+        <div class="hud-corner bottom-right"></div>
+
+        <div class="hud-content">
+            <div class="hud-text">
+                <h1 class="hud-title">INFRAEYE 3D</h1>
+                <p class="hud-subtitle">Real-time Infrastructure Analysis</p>
+                
+                <div class="hud-stats">
+                    <div class="stat-item">
+                        <div class="stat-label">Active Scans</div>
+                        <div class="stat-value">42</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Data Points</div>
+                        <div class="stat-value">18.4K</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-label">Accuracy</div>
+                        <div class="stat-value">98.7%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="scan-line"></div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        let time = 0;
+
+        function drawGrid() {
+            const gridSize = 40;
+            ctx.strokeStyle = 'rgba(6, 182, 212, 0.1)';
+            ctx.lineWidth = 1;
+
+            for (let x = 0; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(13, 14, 15, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawGrid();
+
+            time += 0.01;
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

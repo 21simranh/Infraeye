@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InfraEye AR View</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Arial', sans-serif;
+        }
+
+        #canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #ar-button {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #00deec, #0099cc);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 0 8px 24px rgba(0, 222, 236, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        #ar-button:hover {
+            transform: translateX(-50%) scale(1.05);
+            box-shadow: 0 12px 32px rgba(0, 222, 236, 0.5);
+        }
+
+        #ar-button:active {
+            transform: translateX(-50%) scale(0.95);
+        }
+
+        #back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #00deec;
+            border: 2px solid #00deec;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            pointer-events: auto;
+            transition: all 0.3s ease;
+        }
+
+        #back-button:hover {
+            background: rgba(0, 222, 236, 0.1);
+        }
+
+        #building-info {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            background: rgba(31, 41, 55, 0.9);
+            border: 1px solid rgba(0, 222, 236, 0.5);
+            border-radius: 12px;
+            padding: 16px;
+            color: #00deec;
+            font-size: 14px;
+            max-width: 250px;
+            pointer-events: auto;
+            backdrop-filter: blur(10px);
+        }
+
+        #building-info h3 {
+            margin-bottom: 8px;
+            color: #fff;
+            font-size: 16px;
+        }
+
+        .info-item {
+            margin: 4px 0;
+            font-size: 12px;
+            color: #a0d8e8;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 12px;
+            color: #00deec;
+            font-size: 18px;
+            pointer-events: auto;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0, 222, 236, 0.2);
+            border-top: 4px solid #00deec;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #instruction {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: #00deec;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 13px;
+            pointer-events: none;
+            text-align: center;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-overlay">
+        <button id="back-button" onclick="goBack()">← Back</button>
+        <div id="building-info" style="display: none;">
+            <h3 id="building-name">Loading...</h3>
+            <div class="info-item">ID: <span id="building-id">--</span></div>
+            <div class="info-item">Type: <span id="building-type">--</span></div>
+            <div class="info-item">Risk: <span id="building-risk">--</span></div>
+        </div>
+        <div id="loading" style="display: none;">
+            <div class="spinner"></div>
+            Initializing AR...
+        </div>
+        <div id="instruction">
+            Point your device at a surface to place the building
+        </div>
+        <button id="ar-button" style="display: none;">
+            📍 Start AR
+        </button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/webxr/ARButton.js"></script>
+
+    <script>
+        let camera, scene, renderer, model;
+        let buildingData = null;
+        let isARSupported = false;
+
+        // Get building ID from URL
+        const params = new URLSearchParams(window.location.search);
+        const buildingId = params.get('id');
+
+        function goBack() {
+            window.history.back();
+        }
+
+        function showLoading(show = true) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+        }
+
+        function showARButton(show = true) {
+            document.getElementById('ar-button').style.display = show ? 'block' : 'none';
+        }
+
+        async function fetchBuildingData() {
+            try {
+                // Try to fetch from API
+                if (buildingId) {
+                    const response = await fetch(`http://localhost:8000/api/city-buildings`);
+                    if (response.ok) {
+                        const buildings = await response.json();
+                        buildingData = buildings.find(b => b.id === buildingId || b.name.includes(buildingId));
+                        if (buildingData) {
+                            updateBuildingInfo();
+                            return;
+                        }
+                    }
+                }
+
+                // Fallback: check localStorage
+                const stored = localStorage.getItem('infraeye_buildings_data');
+                if (stored) {
+                    const buildings = JSON.parse(stored);
+                    buildingData = buildings.find(b => b.id === buildingId || b.name.includes(buildingId));
+                    if (buildingData) {
+                        updateBuildingInfo();
+                        return;
+                    }
+                }
+
+                // Default demo building
+                buildingData = {
+                    id: 'demo-building',
+                    name: 'Demo Building',
+                    type: 'Commercial',
+                    riskScore: 45,
+                    position: [0, 0, -2]
+                };
+                updateBuildingInfo();
+            } catch (error) {
+                console.error('Error fetching building data:', error);
+                buildingData = {
+                    id: 'demo-building',
+                    name: 'Demo Building',
+                    type: 'Commercial',
+                    riskScore: 45,
+                    position: [0, 0, -2]
+                };
+                updateBuildingInfo();
+            }
+        }
+
+        function updateBuildingInfo() {
+            if (buildingData) {
+                document.getElementById('building-name').textContent = buildingData.name || 'Unknown';
+                document.getElementById('building-id').textContent = buildingData.id || '--';
+                document.getElementById('building-type').textContent = buildingData.type || '--';
+                document.getElementById('building-risk').textContent = buildingData.riskScore ? buildingData.riskScore.toFixed(1) : '--';
+                document.getElementById('building-info').style.display = 'block';
+            }
+        }
+
+        async function init() {
+            showLoading(true);
+            await fetchBuildingData();
+
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x050505);
+
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            camera.position.set(0, 0, 0);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                alpha: true,
+                preserveDrawingBuffer: true
+            });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.xr.enabled = true;
+            renderer.xr.setFoveation(1);
+
+            document.body.appendChild(renderer.domElement);
+
+            // Lighting
+            const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+            scene.add(light);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 5);
+            scene.add(directionalLight);
+
+            // Load building model
+            loadBuildingModel();
+
+            // AR Button
+            if ('XRSession' in window) {
+                isARSupported = true;
+                try {
+                    const arButton = THREE.ARButton.createButton(renderer, {
+                        requiredFeatures: ['hit-test'],
+                        optionalFeatures: ['dom-overlay', 'dom-overlay-for-handheld'],
+                        domOverlay: { root: document.getElementById('ui-overlay') }
+                    });
+                    if (arButton) {
+                        arButton.id = 'ar-button';
+                        arButton.textContent = '📍 Start AR';
+                        arButton.style.cssText = `
+                            position: absolute;
+                            bottom: 30px;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            padding: 15px 30px;
+                            background: linear-gradient(135deg, #00deec, #0099cc);
+                            color: white;
+                            border: none;
+                            border-radius: 50px;
+                            font-size: 16px;
+                            font-weight: bold;
+                            cursor: pointer;
+                            box-shadow: 0 8px 24px rgba(0, 222, 236, 0.3);
+                            pointer-events: auto;
+                            z-index: 20;
+                        `;
+                        document.getElementById('ui-overlay').appendChild(arButton);
+                    }
+                } catch (e) {
+                    console.log('AR not available on this device');
+                    showARButton(false);
+                }
+            } else {
+                showARButton(false);
+                console.log('WebXR not supported on this device');
+            }
+
+            showLoading(false);
+
+            // Animation loop
+            renderer.setAnimationLoop((time, frame) => {
+                if (frame) {
+                    handleARFrame(frame);
+                }
+                renderer.render(scene, camera);
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function loadBuildingModel() {
+            // Create a simple box building for demo (replace with .glb if available)
+            const geometry = new THREE.BoxGeometry(0.5, 1, 0.5);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x4a90e2,
+                emissive: 0x00deec,
+                emissiveIntensity: 0.2
+            });
+            model = new THREE.Mesh(geometry, material);
+            model.position.set(0, 0.5, -1);
+            scene.add(model);
+
+            // Try to load .glb if available
+            const loader = new THREE.GLTFLoader();
+            const modelPath = `/3d_city-main/models/building.glb`;
+
+            loader.load(modelPath, (gltf) => {
+                scene.remove(model);
+                model = gltf.scene;
+                model.scale.set(0.3, 0.3, 0.3);
+                model.position.set(0, 0, -1);
+                scene.add(model);
+            }).catch(() => {
+                console.log('Using default box model');
+            });
+        }
+
+        function handleARFrame(frame) {
+            // This is called when in AR mode
+            if (model) {
+                model.rotation.y += 0.005;
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

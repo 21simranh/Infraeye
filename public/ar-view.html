@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--
+    ╔════════════════════════════════════════════════════════════════════════════╗
+    ║                    INFRAEYE AR VIEW — HIRO MARKER BASED                    ║
+    ║                       STANDALONE • SELF-CONTAINED                          ║
+    ╚════════════════════════════════════════════════════════════════════════════╝
+    
+    ═══════════════════════════════════════════════════════════════════════════
+    SETUP INSTRUCTIONS FOR LAN DEPLOYMENT
+    ═══════════════════════════════════════════════════════════════════════════
+    
+    STEP 1: FIND YOUR LOCAL IP
+    ───────────────────────────
+    • Windows: 
+      Open PowerShell → run: ipconfig
+      Look for "IPv4 Address" (e.g., 192.168.1.100)
+    
+    • Mac/Linux:
+      Open Terminal → run: ifconfig
+      Look for "inet" address (e.g., 192.168.1.100)
+    
+    STEP 2: START LOCAL SERVER
+    ──────────────────────────
+    Choose ONE method:
+    
+    a) Python 3 (built-in):
+       cd /path/to/INFRAEYE\ FINAL
+       python -m http.server 8080
+       → Then access: http://192.168.x.x:8080/public/ar-view.html
+    
+    b) Node.js (npx serve):
+       cd /path/to/INFRAEYE\ FINAL
+       npx serve -p 8080 -s public
+       → Then access: http://192.168.x.x:8080/ar-view.html
+    
+    c) VS Code Live Server:
+       Right-click ar-view.html → "Open with Live Server"
+       → Copy IP:PORT from running server
+    
+    STEP 3: OPEN ON MOBILE
+    ──────────────────────
+    • Android Chrome: http://192.168.x.x:PORT/public/ar-view.html
+    • iOS Safari:     http://192.168.x.x:PORT/public/ar-view.html
+    • Grant camera permission when prompted
+    
+    STEP 4: PRINT HIRO MARKER
+    ─────────────────────────
+    Download from: https://jeromeetienne.github.io/AR.js/data/images/HIRO.jpg
+    
+    Print at minimum 5cm × 5cm (A4 size recommended)
+    OR display on a second screen/device
+    
+    Point your phone camera at the marker to see the 3D model!
+    
+    ═══════════════════════════════════════════════════════════════════════════
+    -->
+    
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>InfraEye AR Viewer</title>
+    
+    <!-- A-Frame & AR.js from CDN -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ar.js@3.4.5/aframe/aframe-ar.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { width: 100%; height: 100vh; overflow: hidden; font-family: monospace; background: #000; }
+        #ar-scene { width: 100%; height: 100vh; }
+        
+        .ar-status {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 20, 40, 0.95);
+            color: #0ff;
+            border: 1px solid #0ff;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            z-index: 100;
+            font-weight: bold;
+        }
+        
+        .ar-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 20, 40, 0.95);
+            color: #0ff;
+            border: 1px solid #0ff;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 10px;
+            z-index: 100;
+            max-width: 280px;
+        }
+        
+        .ar-info p { margin: 3px 0; color: #0f0; }
+    </style>
+</head>
+<body>
+    <!-- Status Indicator -->
+    <div class="ar-status">🎯 Point at HIRO Marker</div>
+    
+    <!-- Info Display -->
+    <div class="ar-info">
+        <p id="label-1">Building Name</p>
+        <p id="label-2">Floors: --</p>
+        <p id="label-3">Area: -- m²</p>
+    </div>
+
+    <!-- A-Frame AR Scene -->
+    <a-scene 
+        id="ar-scene"
+        embedded 
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono; matrixCodeType: 3x3;"
+    >
+        <!-- Camera -->
+        <a-camera position="0 0 0"></a-camera>
+        
+        <!-- Lighting -->
+        <a-light type="ambient" intensity="2.0" color="#fff"></a-light>
+        <a-light type="directional" intensity="1.5" position="5 10 5"></a-light>
+        
+        <!-- HIRO Marker: Place 3D content on detected marker -->
+        <a-marker preset="hiro" id="hiro-marker">
+            
+            <!-- 3D Building Model -->
+            <a-entity 
+                id="building-model"
+                gltf-model="url(./models/YOUR_MODEL.glb)"
+                scale="1 1 1"
+                position="0 0 0"
+                rotation="0 0 0"
+            ></a-entity>
+            
+            <!-- Fallback: Blue cube if model doesn't load -->
+            <a-box 
+                id="fallback-model"
+                color="#4a90e2"
+                width="0.4"
+                height="0.6"
+                depth="0.4"
+                position="0 0.3 0"
+            ></a-box>
+            
+            <!-- Floating Label 1: Building Name -->
+            <a-text 
+                id="text-name"
+                value="Building Name"
+                position="0 0.8 0"
+                align="center"
+                color="#00ff00"
+                scale="2 2 2"
+            ></a-text>
+            
+            <!-- Floating Label 2: Floors -->
+            <a-text 
+                id="text-floors"
+                value="10 Floors"
+                position="0 0.5 0"
+                align="center"
+                color="#ffff00"
+                scale="1.5 1.5 1.5"
+            ></a-text>
+            
+            <!-- Floating Label 3: Area -->
+            <a-text 
+                id="text-area"
+                value="5,000 m²"
+                position="0 0.2 0"
+                align="center"
+                color="#00ffff"
+                scale="1.5 1.5 1.5"
+            ></a-text>
+            
+        </a-marker>
+        
+        <!-- Background -->
+        <a-sky color="#000000"></a-sky>
+        
+    </a-scene>
+
+    <!-- ===== COMPLETELY ISOLATED SCRIPT ===== -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const scene = document.getElementById('ar-scene');
+            const marker = document.getElementById('hiro-marker');
+            const statusEl = document.querySelector('.ar-status');
+            
+            let buildingData = null;
+            
+            // Get building ID from URL
+            const params = new URLSearchParams(window.location.search);
+            const buildingId = params.get('id');
+            
+            // Fetch building data
+            async function loadBuildingData() {
+                try {
+                    // Try localStorage first (if coming from main app)
+                    const stored = localStorage.getItem('infraeye_buildings_data');
+                    if (stored) {
+                        const buildings = JSON.parse(stored);
+                        buildingData = buildings.find(b => b.id === buildingId);
+                        if (buildingData) {
+                            console.log('✓ Building data from localStorage:', buildingData);
+                            updateLabels();
+                            return;
+                        }
+                    }
+                    
+                    // Fallback: Fetch from API if not in localStorage
+                    console.log('Fetching from API...');
+                    const response = await fetch('http://localhost:8000/api/city-buildings');
+                    if (response.ok) {
+                        const buildings = await response.json();
+                        buildingData = buildings.find(b => b.id === buildingId);
+                        if (buildingData) {
+                            console.log('✓ Building data from API:', buildingData);
+                            updateLabels();
+                            return;
+                        }
+                    }
+                    
+                    // Demo mode if building not found
+                    console.warn('Building not found, using demo data');
+                    buildingData = {
+                        id: buildingId || 'demo-building',
+                        name: buildingId || 'Demo Building',
+                        vibrationFrequency: 5.2,
+                        crackWidth: 2.5,
+                        buildingAge: 25
+                    };
+                    updateLabels();
+                    
+                } catch (error) {
+                    console.error('Failed to load building data:', error);
+                    buildingData = {
+                        id: buildingId || 'demo-building',
+                        name: 'Demo Building',
+                        vibrationFrequency: 5.2,
+                        crackWidth: 2.5,
+                        buildingAge: 25
+                    };
+                    updateLabels();
+                }
+            }
+            
+            // Update AR labels with building data
+            function updateLabels() {
+                if (!buildingData) return;
+                
+                document.getElementById('label-1').textContent = buildingData.name || 'Building';
+                document.getElementById('label-2').textContent = `Floors: ${buildingData.floors || '--'}`;
+                document.getElementById('label-3').textContent = `Crack: ${buildingData.crackWidth?.toFixed(1) || '--'} mm`;
+                
+                document.getElementById('text-name').setAttribute('value', buildingData.name || 'Building');
+                document.getElementById('text-floors').setAttribute('value', `${buildingData.vibrationFrequency?.toFixed(1) || '--'} Hz`);
+                document.getElementById('text-area').setAttribute('value', `Age: ${buildingData.buildingAge || '--'} years`);
+            }
+            
+            // Marker detection
+            marker.addEventListener('markerFound', function() {
+                console.log('✓ HIRO Marker detected');
+                statusEl.textContent = '✓ Marker detected - Building loaded';
+                if (buildingData) {
+                    updateLabels();
+                }
+            });
+            
+            marker.addEventListener('markerLost', function() {
+                console.log('• Marker lost');
+                statusEl.textContent = '• Searching for marker...';
+            });
+            
+            // Load building data on page load
+            loadBuildingData();
+            
+            // Animation: Rotate model slowly
+            setInterval(function() {
+                const model = document.getElementById('building-model');
+                if (model) {
+                    const currentRot = model.getAttribute('rotation');
+                    model.setAttribute('rotation', {
+                        x: currentRot.x,
+                        y: currentRot.y + 0.5,
+                        z: currentRot.z
+                    });
+                }
+            }, 50);
+        });
+    </script>
+</body>
+</html>

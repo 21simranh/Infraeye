@@ -1,0 +1,71 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: linear-gradient(135deg, #4A6FA5 0%, #6B8FBF 100%);
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Inter', sans-serif;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(74, 111, 165, 0.2);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E6E39B;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #F0F5AA;
+}
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', serif;
+  }
+}
+
+@layer components {
+  /* Premium Button Styling */
+  button {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  /* Premium Card Styling */
+  .card {
+    @apply bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 shadow-lg;
+  }
+
+  /* Subtle gradient overlay */
+  .gradient-overlay {
+    @apply bg-gradient-to-r from-[#4A6FA5]/20 to-[#6B8FBF]/20;
+  }
+
+  /* Soft shadow */
+  .soft-shadow {
+    @apply shadow-[0_8px_32px_rgba(230,227,155,0.1)];
+  }
+
+  /* Text utilities */
+  .text-accent {
+    @apply text-[#E6E39B];
+  }
+
+  .text-muted {
+    @apply text-white/70;
+  }
+}
